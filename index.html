@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>インフレ造幣局</title>
+<meta name="description" content="お金を刷って刷って刷りまくる、ハイパーインフレ放置ゲーム。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+  <header class="masthead">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">造</span>
+      <div>
+        <h1>インフレ造幣局</h1>
+        <p class="brand-sub">お金を刷って、刷って、刷りまくる。</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="画面">
+      <button class="tab" role="tab" type="button" id="tabbtn-mint" data-tab="mint" aria-selected="true">造幣</button>
+      <button class="tab" role="tab" type="button" id="tabbtn-denom" data-tab="denom" aria-selected="false">デノミ<span class="dot" hidden></span></button>
+      <button class="tab gold-tab" role="tab" type="button" id="tabbtn-gold" data-tab="gold" aria-selected="false" hidden>金本位<span class="dot" hidden></span></button>
+      <button class="tab" role="tab" type="button" id="tabbtn-ach" data-tab="ach" aria-selected="false">実績</button>
+      <button class="tab" role="tab" type="button" id="tabbtn-stats" data-tab="stats" aria-selected="false">記録</button>
+      <button class="tab" role="tab" type="button" id="tabbtn-settings" data-tab="settings" aria-selected="false">設定</button>
+    </nav>
+  </header>
+
+  <section class="note" aria-label="資産">
+    <canvas class="note-guilloche" id="guilloche" aria-hidden="true"></canvas>
+    <div class="note-top">
+      <span class="note-issuer">日本インフレ銀行券</span>
+      <span class="note-serial" id="serial">AA 000000 A</span>
+    </div>
+    <div class="note-body">
+      <div class="note-amount"><span id="money">10.00</span><span class="note-unit">円</span></div>
+      <div class="note-rate">
+        <span>毎秒 <b id="rate">+0</b> 円</span>
+        <span id="doublingWrap">資産の倍増まで <b id="doubling">―</b></span>
+      </div>
+    </div>
+    <div class="note-seal" aria-hidden="true"><span>之</span><span>総</span><span>印</span><span>裁</span></div>
+    <div class="note-bottom">
+      <span class="note-currencies">
+        <span id="zerosTopWrap" hidden>ゼロ <b id="zerosTop">0</b></span>
+        <span id="goldTopWrap" class="gold-text" hidden>&nbsp;·&nbsp; 金塊 <b id="goldTop">0</b></span>
+      </span>
+      <span class="note-serial" id="serial2">AA 000000 A</span>
+    </div>
+  </section>
+
+  <div class="ticker" id="ticker" aria-live="off">
+    <span class="ticker-label">ニュース</span>
+    <div class="ticker-track"><span class="ticker-text" id="tickerText"></span></div>
+  </div>
+
+  <main>
+    <!-- 造幣 -->
+    <section class="panel" id="tab-mint" role="tabpanel" aria-labelledby="tabbtn-mint">
+      <div class="mint-grid">
+        <div class="mint-main">
+          <div class="goal">
+            <span class="goal-text" id="goalText"></span>
+            <div class="bar" id="goalBarWrap"><i id="goalBar"></i></div>
+          </div>
+          <div class="toolbar">
+            <button class="btn" type="button" id="tickBtn" data-act="tick">
+              <span>印刷速度を上げる <kbd>T</kbd></span>
+              <small id="tickCost">1000円</small>
+            </button>
+            <div class="tick-info">
+              <span>印刷速度 <b id="tickCount">0</b> 回</span>
+              <span>全造幣機 <b id="tickMult">×1.00</b> (1回 <b id="tickBase">×1.125</b>)</span>
+            </div>
+            <span class="spacer"></span>
+            <button class="btn" type="button" data-act="maxAll">
+              <span>全部買う <kbd>M</kbd></span>
+              <small>上の段から順に</small>
+            </button>
+          </div>
+          <div class="gens" id="gens"></div>
+        </div>
+
+        <aside class="mint-side">
+          <div class="card">
+            <div class="card-head"><h3>量的緩和</h3><span class="chip" id="qeCount">0 回</span></div>
+            <p id="qeDesc"></p>
+            <div class="bar"><i id="qeBar"></i></div>
+            <button class="btn wide" type="button" data-act="qe" id="qeBtn">
+              <span>量的緩和を実施 <kbd>Q</kbd></span>
+              <small id="qeReq"></small>
+            </button>
+          </div>
+
+          <div class="card" id="denomSideCard">
+            <div class="card-head"><h3>デノミ</h3><span class="chip" id="denomSideChip">1e30円から</span></div>
+            <p>お札からゼロを消して出直す。消したゼロは強化に使える。</p>
+            <button class="stamp" type="button" data-act="denom">
+              <span class="stamp-main">デノミ</span>
+              <span class="stamp-sub" data-bind="denomSub"></span>
+            </button>
+          </div>
+
+          <div class="card" id="goldSideCard" hidden>
+            <div class="card-head"><h3>金本位制</h3><span class="chip">1.8e308円から</span></div>
+            <p>円を捨てて金に戻る。ゼロも強化もリセットして金塊を得る。</p>
+            <button class="stamp gold-stamp" type="button" data-act="gold">
+              <span class="stamp-main">金本位制</span>
+              <span class="stamp-sub" data-bind="goldSub"></span>
+            </button>
+          </div>
+
+          <div class="card prices">
+            <div class="card-head"><h3>今日の物価</h3><span class="chip" id="priceIndex">指数 1</span></div>
+            <ul id="priceList"></ul>
+            <p class="real">あなたの資産はパン <b id="realWealth">0</b> 斤分</p>
+            <button class="btn wide" type="button" data-act="bread" id="breadBtn">
+              <span>パンを1斤買う</span>
+              <small id="breadCost"></small>
+            </button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- デノミ -->
+    <section class="panel layer" id="tab-denom" role="tabpanel" aria-labelledby="tabbtn-denom" hidden>
+      <div class="layer-head">
+        <div>
+          <span class="eyebrow">デノミネーション</span>
+          <h2><span id="zerosBig">0</span><small>ゼロ</small></h2>
+          <p>資産が 100穣円 (1e30円) を超えるとデノミできます。資産と造幣機、量的緩和はリセットされますが、消したゼロの数だけ「ゼロ」が手に入ります。資産が 1e<span id="denomScaleText">20</span> 倍になるごとに獲得量は10倍。</p>
+          <div class="facts">
+            <span>累計 <b id="zerosTotal">0</b> ゼロ</span>
+            <span>デノミ <b id="denomCount">0</b> 回</span>
+            <span>次のゼロ +1 まで <b id="nextZeroAt">―</b> 円</span>
+          </div>
+        </div>
+        <button class="stamp" type="button" data-act="denom">
+          <span class="stamp-main">デノミ</span>
+          <span class="stamp-sub" data-bind="denomSub"></span>
+        </button>
+      </div>
+
+      <h3 class="section-title">ゼロ強化</h3>
+      <div class="upgrades" id="zeroUpgrades"></div>
+
+      <h3 class="section-title">自動化</h3>
+      <div class="upgrades" id="autoUpgrades"></div>
+      <div class="autos" id="autoToggles"></div>
+      <div class="auto-denom" id="autoDenomConfig" hidden>
+        <label for="autoDenomMode">自動デノミの条件</label>
+        <select class="field" id="autoDenomMode">
+          <option value="time">デノミから経過した秒数</option>
+          <option value="gain">獲得できるゼロの数</option>
+        </select>
+        <input class="field narrow num" id="autoDenomValue" inputmode="decimal" autocomplete="off" spellcheck="false">
+        <span class="note-small" id="autoDenomHint">以上になったら実行</span>
+      </div>
+    </section>
+
+    <!-- 金本位 -->
+    <section class="panel layer gold-layer" id="tab-gold" role="tabpanel" aria-labelledby="tabbtn-gold" hidden>
+      <div class="layer-head">
+        <div>
+          <span class="eyebrow">金本位制</span>
+          <h2><span id="goldBig">0</span><small>金塊</small></h2>
+          <p>資産が Number.MAX_VALUE (約1.8e308円) を超えると、円を捨てて金に戻れます。ゼロとゼロ強化はリセットされますが、自動化は残ります。金塊は持っているだけで全造幣機を (1+累計金塊)² 倍にします。</p>
+          <div class="facts">
+            <span>累計 <b id="goldTotal">0</b> 金塊</span>
+            <span>金本位制 <b id="goldCount">0</b> 回</span>
+            <span>金塊ボーナス <b id="goldBonus">×1</b></span>
+          </div>
+        </div>
+        <button class="stamp gold-stamp" type="button" data-act="gold">
+          <span class="stamp-main">金本位制</span>
+          <span class="stamp-sub" data-bind="goldSub"></span>
+        </button>
+      </div>
+      <h3 class="section-title">金塊強化</h3>
+      <div class="upgrades" id="goldUpgrades"></div>
+    </section>
+
+    <!-- 実績 -->
+    <section class="panel layer" id="tab-ach" role="tabpanel" aria-labelledby="tabbtn-ach" hidden>
+      <div class="card-head">
+        <h3 class="section-title">実績 <span class="chip" id="achCount">0 / 0</span></h3>
+        <span class="chip">解除するたび全造幣機 ×1.05 (いま <b id="achBonus">×1.00</b>)</span>
+      </div>
+      <div class="ach-grid" id="achGrid"></div>
+    </section>
+
+    <!-- 記録 -->
+    <section class="panel layer" id="tab-stats" role="tabpanel" aria-labelledby="tabbtn-stats" hidden>
+      <div class="stats-grid">
+        <div class="card">
+          <h3>全体</h3>
+          <dl class="kv">
+            <dt>プレイ時間</dt><dd id="stPlayed"></dd>
+            <dt>今回のデノミから</dt><dd id="stDenomTime"></dd>
+            <dt>最高資産</dt><dd id="stBestEver"></dd>
+            <dt>これまでに刷った総額</dt><dd id="stTotal"></dd>
+            <dt>買ったパン</dt><dd id="stBreads"></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h3>倍率の内訳</h3>
+          <dl class="kv">
+            <dt>量的緩和</dt><dd id="stQE"></dd>
+            <dt>印刷速度</dt><dd id="stTick"></dd>
+            <dt>ゼロ・金塊・実績</dt><dd id="stGlobal"></dd>
+            <dt>10台ごとの倍率</dt><dd id="stPer10"></dd>
+          </dl>
+        </div>
+        <div class="card">
+          <h3>最近のデノミ</h3>
+          <dl class="kv">
+            <dt>回数</dt><dd id="stDenoms"></dd>
+            <dt>最速</dt><dd id="stFastest"></dd>
+          </dl>
+          <ul class="history" id="stHistory"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 設定 -->
+    <section class="panel layer" id="tab-settings" role="tabpanel" aria-labelledby="tabbtn-settings" hidden>
+      <div class="stats-grid">
+        <div class="card">
+          <h3>数字の表記</h3>
+          <div class="segmented" role="radiogroup" aria-label="数字の表記">
+            <label><input type="radio" name="notation" value="jp" id="notation-jp"><span>日本式</span><small>1.23京</small></label>
+            <label><input type="radio" name="notation" value="sci" id="notation-sci"><span>指数</span><small>1.23e16</small></label>
+            <label><input type="radio" name="notation" value="eng" id="notation-eng"><span>工学</span><small>12.3e15</small></label>
+          </div>
+          <p class="note-small">日本式は無量大数 (1e68) の先がないので、1e72 から指数表記になります。</p>
+          <label class="switch"><input type="checkbox" id="newsToggle"> ニュースを流す</label>
+        </div>
+        <div class="card">
+          <h3>セーブ</h3>
+          <p>このブラウザに10秒ごとに自動保存します。別の端末に移すときは書き出した文字列を読み込んでください。</p>
+          <div class="row">
+            <button class="btn" type="button" data-act="save">今すぐ保存</button>
+            <button class="btn" type="button" data-act="export">書き出す</button>
+            <button class="btn" type="button" data-act="import">読み込む</button>
+          </div>
+          <label class="note-small" for="saveText">セーブデータ</label>
+          <textarea class="field save-text" id="saveText" spellcheck="false" placeholder="「書き出す」を押すとここに表示されます。読み込むときはここに貼り付けてください。"></textarea>
+          <button class="btn danger" type="button" data-act="hardReset" id="hardResetBtn">最初からやり直す</button>
+        </div>
+        <div class="card">
+          <h3>キーボード</h3>
+          <dl class="keys">
+            <dt>1〜8</dt><dd>その段を10台まで買う</dd>
+            <dt>Shift+1〜8</dt><dd>その段を1台買う</dd>
+            <dt>M</dt><dd>全部買う</dd>
+            <dt>T</dt><dd>印刷速度を上げる</dd>
+            <dt>Q</dt><dd>量的緩和</dd>
+            <dt>D</dt><dd>デノミ</dd>
+            <dt>G</dt><dd>金本位制</dd>
+          </dl>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle"></h2>
+    <div id="modalBody"></div>
+    <button class="btn primary" type="button" id="modalClose">閉じる</button>
+  </div>
+</div>
+
+<script src="js/decimal.js"></script>
+<script src="js/format.js"></script>
+<script src="js/data.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
