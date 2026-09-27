@@ -3,7 +3,9 @@
 お金を刷って、刷って、刷りまくる。ハイパーインフレがテーマの放置系インフレゲームです。
 10円から始めて、最後は 1e3000 円 (ゼロが3000個並ぶ額面) を目指します。
 
-ビルド不要。`index.html` をブラウザで開くだけで遊べます。
+**遊ぶ:** https://www.buko106.tokyo/cc-inflation-game-01/
+
+ビルド不要。`index.html` をブラウザで開くだけでも遊べます。
 
 ## 遊び方
 
@@ -47,6 +49,15 @@ npm test        # Node 18 以上。依存パッケージなし
 
 `<script type="module">` を使っていないので、`file://` で直接開いても動きます。
 セーブはブラウザの `localStorage` に10秒ごとに保存されます。
+
+### デプロイ
+
+`.github/workflows/pages.yml` が GitHub Pages に公開します。
+
+- PR と `main` への push: テスト (`npm test`) と公開用ファイルの収集
+- `main` への push のときだけ: GitHub Pages へデプロイ
+
+公開するのは `index.html`・`css/`・`js/` だけです。Actions タブの「Run workflow」から手動でも実行できます。
 
 ### バランスの目安
 
