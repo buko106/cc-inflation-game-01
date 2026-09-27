@@ -39,6 +39,9 @@
     goldScale: 100,
     // この金額に到達するとエンディング
     endExp: 3000,
+    // インフレ抑制: 毎秒の生産が 1e(softcapAt) 円を超えたら、超えた桁数を softcapPow 乗にする
+    softcapAt: 3000,
+    softcapPow: 0.8,
   };
 
   const geo = (base, ratio) => (l) => D.from(ratio).pow(l).mul(base);

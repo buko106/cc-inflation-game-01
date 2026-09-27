@@ -94,7 +94,17 @@
       const r = s.gens[i].amt.mul(mults[i]).mul(tickMult);
       return i === 0 ? r : r.mul(RULES.tierRate);
     });
-    return { global, tickMult, mults, rates, n, moneyRate: rates[0] };
+    const raw = rates[0];
+    rates[0] = softcap(raw);
+    return { global, tickMult, mults, rates, n, moneyRate: rates[0], softcapped: rates[0] !== raw };
+  }
+
+  // エンディング後は倍率どうしが掛け合わさり、1回の周回のなかで資産の桁数が際限なく増えていく。
+  // 毎秒の生産の桁数を抑えて、その暴走を止める
+  function softcap(rate) {
+    const L = rate.log10();
+    if (!(L > RULES.softcapAt)) return rate;
+    return D.fromLog10(RULES.softcapAt + Math.pow(L - RULES.softcapAt, RULES.softcapPow));
   }
 
   // ---- 時間経過 ----
@@ -169,11 +179,21 @@
   }
 
   // 買えるだけ買う。10台単位でまとめ買いし、残ったお金で1台ずつ買う
+  // 購入の繰り返しの上限。まとめ買いのあとは数回で終わるはずだが、
+  // 計算誤差で価格が上がらなくなっても処理が止まる (画面が固まらない) ようにする
+  const MAX_REPEAT = 100;
+
+  function repeat(times, fn) {
+    let n = 0;
+    while (n < times && fn()) n++;
+    return n;
+  }
+
   function buyMax(s, i) {
     if (i >= unlockedTiers(s)) return 0;
     const before = s.gens[i].bought;
     if (s.gens[i].bought % 10 !== 0 && !buyBatch(s, i)) {
-      while (buyOne(s, i));
+      repeat(10, () => buyOne(s, i));
       return s.gens[i].bought - before;
     }
     const g = GENS[i];
@@ -185,8 +205,8 @@
       const total = D.pow10(1 + g.base + g.inc * last).mul(1 / (1 - Math.pow(10, -g.inc)));
       if (pay(s, total)) addGens(s, i, 10 * (last - j + 1));
     }
-    while (buyBatch(s, i));
-    while (buyOne(s, i));
+    repeat(MAX_REPEAT, () => buyBatch(s, i));
+    repeat(10, () => buyOne(s, i));
     return s.gens[i].bought - before;
   }
 
@@ -225,7 +245,7 @@
       const total = D.pow10(tickCostExp(last)).mul(1 / (1 - Math.pow(10, -b)));
       if (pay(s, total)) s.tick = last + 1;
     }
-    while (buyTick(s));
+    repeat(MAX_REPEAT, () => buyTick(s));
     return s.tick - before;
   }
 
