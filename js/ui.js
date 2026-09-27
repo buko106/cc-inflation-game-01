@@ -503,6 +503,7 @@
     setText($('rate'), `+${F(c.moneyRate)}`);
     const dbl = G.doublingTime(s, c);
     show($('doublingWrap'), Number.isFinite(dbl));
+    show($('softcapNote'), c.softcapped);
     setText($('doubling'), formatTime(dbl));
     const serial = `${letter(s.golds)}${letter(Math.floor(s.denoms / 26))} ${String(s.denoms % 1e6).padStart(6, '0')} ${letter(s.qe)}`;
     setText($('serial'), serial);

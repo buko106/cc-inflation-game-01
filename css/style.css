@@ -293,6 +293,15 @@ button {
   font-weight: 700;
 }
 
+.softcap {
+  padding: 0 8px;
+  border: 1px solid var(--seal);
+  border-radius: 3px;
+  color: var(--seal);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .note-bottom b {
   color: var(--ink);
   font-weight: 700;

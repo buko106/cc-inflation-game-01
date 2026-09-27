@@ -4,6 +4,11 @@
   'use strict';
   const IG = (globalThis.IG = globalThis.IG || {});
 
+  // 指数の上限。これを超える値は上限に丸める。
+  // 指数や購入数が 2^53 (約9e15) に近づくと「+1」が効かなくなり、購入処理が終わらなくなるため、
+  // 整数の計算が正確なうちに止める
+  const MAX_EXP = 1e12;
+
   class D {
     constructor(m, e) {
       this.m = m;
@@ -127,8 +132,9 @@
   }
 
   function make(m, e) {
-    if (!(m > 0) || !Number.isFinite(e)) return D.ZERO;
+    if (!(m > 0) || Number.isNaN(e) || e === -Infinity) return D.ZERO;
     if (!Number.isFinite(m)) return D.ZERO;
+    if (e >= MAX_EXP) return D.MAX;
     if (m >= 10 || m < 1) {
       const k = Math.floor(Math.log10(m));
       m = k > 300 || k < -300 ? m / Math.pow(10, k / 2) / Math.pow(10, k - k / 2) : m / Math.pow(10, k);
@@ -137,7 +143,7 @@
       if (m >= 10) { m /= 10; e += 1; }
       if (m < 1) { m *= 10; e -= 1; }
     }
-    return new D(m, e);
+    return e >= MAX_EXP ? D.MAX : new D(m, e);
   }
 
   function fromNumber(n) {
@@ -158,6 +164,8 @@
 
   D.ZERO = new D(0, 0);
   D.ONE = new D(1, 0);
+  D.MAX_EXP = MAX_EXP;
+  D.MAX = new D(1, MAX_EXP);
 
   IG.D = D;
 })();
