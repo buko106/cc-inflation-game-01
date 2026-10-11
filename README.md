@@ -5,7 +5,6 @@
 
 **遊ぶ:** https://www.buko106.tokyo/cc-inflation-game-01/
 
-ビルド不要。`index.html` をブラウザで開くだけでも遊べます。
 
 ## 遊び方
 
@@ -35,30 +34,53 @@
 
 ## 開発
 
+Node 22.12 以上が必要です。TypeScript + Vite + Vitest で作っています。
+
 ```sh
-npm test        # Node 18 以上。依存パッケージなし
+npm install
+npm run dev        # 開発サーバー (保存すると即座に反映)
+npm test           # コアのテスト (Vitest)
+npm run typecheck  # 型チェック
+npm run build      # dist/ に公開用ファイルを出力
+npm run preview    # ビルド結果をローカルで確認
 ```
+
+### 構成
+
+ゲームのロジック (`src/core/`) と画面 (`src/ui/`) を分けています。
+`src/core/` は DOM・`localStorage`・タイマーに触らない純粋な TypeScript で、テストはここを対象にします。
+コアの型チェック (`tsconfig.core.json`) には DOM の型を含めていないので、コアから `document` などに触ると型エラーになります。
 
 | ファイル | 役割 |
 | --- | --- |
-| `js/decimal.js` | 1.8e308 を超える巨大数 (仮数 × 10^指数) |
-| `js/format.js` | 数字の表記 |
-| `js/data.js` | 造幣機・強化・実績・ニュースなどの定数。バランス調整はここ |
-| `js/game.js` | ゲームのロジック (DOM に触らない) |
-| `js/ui.js` | 画面の組み立てと更新 |
-| `js/main.js` | 起動、ゲームループ、保存 |
+| `src/core/decimal.ts` | 1.8e308 を超える巨大数 (仮数 × 10^指数) |
+| `src/core/format.ts` | 数字の表記 |
+| `src/core/data.ts` | 造幣機・強化・実績・ニュースなどの定数。バランス調整はここ |
+| `src/core/state.ts` | 状態の型と初期状態 |
+| `src/core/production.ts` | 倍率と毎秒の生産量 |
+| `src/core/purchase.ts` | 造幣機と印刷速度の購入 |
+| `src/core/prestige.ts` | 量的緩和・デノミ・金本位制 |
+| `src/core/upgrades.ts` | ゼロ強化・金強化 |
+| `src/core/automation.ts` | 自動化 |
+| `src/core/simulation.ts` | 時間経過 (`step` / `advance`) |
+| `src/core/market.ts` | 物価 |
+| `src/core/achievements.ts` | 実績とエンディング |
+| `src/core/save.ts` | セーブの書き出し/読み込み |
+| `src/core/index.ts` | コアの公開 API (UI とテストはここから読み込む) |
+| `src/ui/ui.ts` | 画面の組み立てと更新 |
+| `src/main.ts` | 起動、ゲームループ、保存 |
+| `tests/` | コアのテスト |
 
-`<script type="module">` を使っていないので、`file://` で直接開いても動きます。
 セーブはブラウザの `localStorage` に10秒ごとに保存されます。
 
 ### デプロイ
 
 `.github/workflows/pages.yml` が GitHub Pages に公開します。
 
-- PR と `main` への push: テスト (`npm test`) と公開用ファイルの収集
-- `main` への push のときだけ: GitHub Pages へデプロイ
+- PR と `main` への push: 型チェック・テスト・ビルド
+- `main` への push のときだけ: ビルド結果 (`dist/`) を GitHub Pages へデプロイ
 
-公開するのは `index.html`・`css/`・`js/` だけです。Actions タブの「Run workflow」から手動でも実行できます。
+Actions タブの「Run workflow」から手動でも実行できます。
 
 ### バランスの目安
 

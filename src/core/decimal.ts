@@ -1,0 +1,172 @@
+// 巨大数ライブラリ。Number.MAX_VALUE (約1.8e308) を超える値を扱うため、
+// 値を 仮数 m (1 <= m < 10) と 指数 e (整数) の組で持つ。負の値は扱わない。
+
+// 指数の上限。これを超える値は上限に丸める。
+// 指数や購入数が 2^53 (約9e15) に近づくと「+1」が効かなくなり、購入処理が終わらなくなるため、
+// 整数の計算が正確なうちに止める
+const MAX_EXP = 1e12;
+
+// D に変換できる値 (D / number / "1.2e345" / [m, e])
+export type DLike = D | number | string | readonly [number | string, number | string];
+
+export class D {
+  static ZERO: D;
+  static ONE: D;
+  static MAX: D;
+  static readonly MAX_EXP = MAX_EXP;
+
+  constructor(
+    readonly m: number,
+    readonly e: number,
+  ) {}
+
+  // 任意の入力を D に変換する。変換できないものは 0
+  static from(x: DLike | null | undefined): D {
+    if (x instanceof D) return x;
+    if (typeof x === 'number') return fromNumber(x);
+    if (typeof x === 'string') return fromString(x);
+    if (Array.isArray(x)) return make(Number(x[0]), Number(x[1]));
+    return D.ZERO;
+  }
+
+  static pow10(n: number): D {
+    return Number.isInteger(n) ? new D(1, n) : D.fromLog10(n);
+  }
+
+  static fromLog10(l: number): D {
+    if (l === -Infinity || Number.isNaN(l)) return D.ZERO;
+    const e = Math.floor(l);
+    return make(Math.pow(10, l - e), e);
+  }
+
+  isZero(): boolean {
+    return this.m === 0;
+  }
+
+  add(x: DLike): D {
+    const b = D.from(x);
+    if (b.m === 0) return this;
+    if (this.m === 0) return b;
+    let hi: D = this;
+    let lo = b;
+    if (hi.e < lo.e) [hi, lo] = [lo, hi];
+    const d = hi.e - lo.e;
+    if (d > 17) return hi;
+    return make(hi.m + lo.m / Math.pow(10, d), hi.e);
+  }
+
+  // 結果が負になる場合は 0 に丸める
+  sub(x: DLike): D {
+    const b = D.from(x);
+    if (b.m === 0) return this;
+    const d = this.e - b.e;
+    if (d < 0) return D.ZERO;
+    if (d > 17) return this;
+    const m = this.m - b.m / Math.pow(10, d);
+    return m <= this.m * 1e-15 ? D.ZERO : make(m, this.e);
+  }
+
+  mul(x: DLike): D {
+    const b = D.from(x);
+    if (this.m === 0 || b.m === 0) return D.ZERO;
+    return make(this.m * b.m, this.e + b.e);
+  }
+
+  div(x: DLike): D {
+    const b = D.from(x);
+    if (b.m === 0) return D.ZERO;
+    if (this.m === 0) return D.ZERO;
+    return make(this.m / b.m, this.e - b.e);
+  }
+
+  pow(p: number): D {
+    if (p === 0) return D.ONE;
+    if (this.m === 0) return D.ZERO;
+    return D.fromLog10(this.log10() * p);
+  }
+
+  log10(): number {
+    return this.m === 0 ? -Infinity : this.e + Math.log10(this.m);
+  }
+
+  cmp(x: DLike): -1 | 0 | 1 {
+    const b = D.from(x);
+    if (this.m === 0) return b.m === 0 ? 0 : -1;
+    if (b.m === 0) return 1;
+    if (this.e !== b.e) return this.e > b.e ? 1 : -1;
+    if (this.m === b.m) return 0;
+    return this.m > b.m ? 1 : -1;
+  }
+
+  gte(x: DLike): boolean { return this.cmp(x) >= 0; }
+  gt(x: DLike): boolean { return this.cmp(x) > 0; }
+  lte(x: DLike): boolean { return this.cmp(x) <= 0; }
+  lt(x: DLike): boolean { return this.cmp(x) < 0; }
+  eq(x: DLike): boolean { return this.cmp(x) === 0; }
+
+  max(x: DLike): D {
+    const b = D.from(x);
+    return this.gte(b) ? this : b;
+  }
+
+  min(x: DLike): D {
+    const b = D.from(x);
+    return this.lte(b) ? this : b;
+  }
+
+  floor(): D {
+    if (this.e >= 16) return this;
+    if (this.e < 0) return D.ZERO;
+    return fromNumber(Math.floor(this.toNumber() + 1e-9));
+  }
+
+  toNumber(): number {
+    if (this.m === 0) return 0;
+    if (this.e > 308) return Infinity;
+    if (this.e < -324) return 0;
+    return this.m * Math.pow(10, this.e);
+  }
+
+  toString(): string {
+    return this.m === 0 ? '0' : `${this.m}e${this.e}`;
+  }
+
+  toJSON(): string {
+    return this.toString();
+  }
+}
+
+function make(m: number, e: number): D {
+  if (!(m > 0) || Number.isNaN(e) || e === -Infinity) return D.ZERO;
+  if (!Number.isFinite(m)) return D.ZERO;
+  if (e >= MAX_EXP) return D.MAX;
+  if (m >= 10 || m < 1) {
+    const k = Math.floor(Math.log10(m));
+    m = k > 300 || k < -300 ? m / Math.pow(10, k / 2) / Math.pow(10, k - k / 2) : m / Math.pow(10, k);
+    e += k;
+    // 浮動小数点の誤差で範囲外に出た分を補正
+    if (m >= 10) { m /= 10; e += 1; }
+    if (m < 1) { m *= 10; e -= 1; }
+  }
+  return e >= MAX_EXP ? D.MAX : new D(m, e);
+}
+
+function fromNumber(n: number): D {
+  if (!(n > 0) || !Number.isFinite(n)) return D.ZERO;
+  return make(n, 0);
+}
+
+function fromString(s: string): D {
+  const str = s.trim();
+  const i = str.toLowerCase().indexOf('e');
+  if (i < 0) return fromNumber(Number(str));
+  const m = Number(str.slice(0, i));
+  const e = Number(str.slice(i + 1));
+  if (!Number.isFinite(m) || !Number.isFinite(e)) return D.ZERO;
+  if (!Number.isInteger(e)) return D.fromLog10(Math.log10(m) + e);
+  return make(m, e);
+}
+
+D.ZERO = new D(0, 0);
+D.ONE = new D(1, 0);
+D.MAX = new D(1, MAX_EXP);

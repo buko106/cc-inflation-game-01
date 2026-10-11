@@ -1,0 +1,10 @@
+{
+  // コアの型チェック。DOM の型を読み込まないので、コアから document や localStorage に触ると型エラーになる
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src/core"],
+  "exclude": []
+}

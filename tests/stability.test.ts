@@ -1,8 +1,7 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const IG = require('./load');
+import { assert, test } from 'vitest';
+import * as G from '../src/core';
 
-const { D, game: G } = IG;
+const { D } = G;
 
 // 金本位制を何度も回したあとの強い状態 (量的緩和の自動化だけオフ)
 function lateGameState() {
@@ -24,7 +23,7 @@ function lateGameState() {
   return s;
 }
 
-function timed(fn) {
+function timed(fn: () => void): number {
   const t0 = Date.now();
   fn();
   return Date.now() - t0;
@@ -43,8 +42,8 @@ test('桁外れの資産でも購入処理がすぐ終わる', () => {
 });
 
 test('指数は上限で止まり、それを超えない', () => {
-  assert.equal(D.fromLog10(1e20).e, D.MAX_EXP);
-  assert.equal(D.from('1e100000000000000000000').e, D.MAX_EXP);
+  assert.strictEqual(D.fromLog10(1e20).e, D.MAX_EXP);
+  assert.strictEqual(D.from('1e100000000000000000000').e, D.MAX_EXP);
   assert.ok(D.MAX.mul(D.MAX).eq(D.MAX));
   assert.ok(D.MAX.add(D.MAX).eq(D.MAX));
 });
