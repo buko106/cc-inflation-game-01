@@ -5,7 +5,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "strict": true,
     "noEmit": true,
     "isolatedModules": true,
@@ -15,7 +15,7 @@
     "noUnusedParameters": true,
     "skipLibCheck": true
   },
-  "include": ["src", "tests", "vite.config.ts"],
+  "include": ["src", "tests", "scripts", "vite.config.ts"],
   // DOM の型と重複するため、コア専用の宣言はここでは読まない
   "exclude": ["src/core/env.d.ts"]
 }
