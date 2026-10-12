@@ -37,3 +37,14 @@ test('強化は安いものから、許可したものだけ買う', () => {
   assert.strictEqual(G.lvl(s, 'zMult'), 1);
   assert.strictEqual(G.lvl(s, 'zCount'), 1);
 });
+
+test('ふつうに遊ぶと金本位制まで約30分かかる', () => {
+  const r = runStrategy(findStrategy('normal')!, { maxSec: 3600 });
+  assert.ok(r.times.gold !== null, '1時間以内に金本位制に届かない');
+  assert.ok(r.times.gold >= 25 * 60 && r.times.gold <= 40 * 60, `金本位制まで ${(r.times.gold / 60).toFixed(1)} 分`);
+});
+
+test('毎ティック操作しても金本位制まで20分以上かかる', () => {
+  const r = runStrategy(findStrategy('active')!, { maxSec: 20 * 60 });
+  assert.strictEqual(r.times.gold, null);
+});
