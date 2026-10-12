@@ -79,6 +79,15 @@ export const STRATEGIES: readonly Strategy[] = [
     act: playBy({ buyAutomation: true, denom: 'double', gold: 'double' }),
   },
   {
+    name: 'normal',
+    description: '1秒に1回操作する、ふつうに画面に張りついている人。自動化も買う',
+    actEvery: 1,
+    setup(s) {
+      s.autoOn.aDenom = false;
+    },
+    act: playBy({ buyAutomation: true, denom: 'double', gold: 'double' }),
+  },
+  {
     name: 'rush',
     description: '毎ティック操作し、デノミ・金本位制はできたらすぐする',
     actEvery: 0.05,

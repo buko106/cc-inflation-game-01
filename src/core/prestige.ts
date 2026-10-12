@@ -40,7 +40,7 @@ export function doQE(s: State): boolean {
 // ---- デノミ (ゼロを得る) ----
 
 export function denomScale(s: State): number {
-  return RULES.denomScale - 2 * lvl(s, 'gExp');
+  return RULES.denomScale - RULES.gExpStep * lvl(s, 'gExp');
 }
 
 function zeroGainMult(s: State): D {

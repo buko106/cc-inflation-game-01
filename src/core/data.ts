@@ -62,7 +62,7 @@ export const GENS: readonly GenDef[] = [
 export const RULES = {
   startMoney: 10,
   // 全体の時間の速さ
-  speed: 3,
+  speed: 1.1,
   // 上位の造幣機が下位の造幣機を生み出す速さ (輪転機→円は 1.0)
   tierRate: 1,
   // 印刷速度 t 回目の価格 = 10^(tickCostBase + tickCostInc × t + tickCostQuad × t²)
@@ -70,12 +70,22 @@ export const RULES = {
   tickCostInc: 1,
   tickCostQuad: 0.01,
   tickBase: 1.125,
+  // 10台そろえるごとの倍率
+  per10Base: 2,
+  // 十台揃え・高速輪転の1レベルごとの上乗せ
+  zPer10Step: 0.25,
+  zTickStep: 0.025,
   qeBaseTiers: 4,
   qeReqBase: 20,
-  qeReqStep: 15,
+  qeReqStep: 100,
   // デノミ: 10^denomAt 円でゼロ 1 個。以降 10^denomScale 倍ごとに 10 倍
   denomAt: 30,
-  denomScale: 20,
+  denomScale: 100,
+  // デノミ改革1レベルごとに denomScale から引く桁数
+  gExpStep: 10,
+  // 札束ブースト1回ごとの倍率と、ゼロの信用の指数
+  zMultBase: 2,
+  zZeroPow: 0.15,
   // 金本位制: Number.MAX_VALUE を超えたら金塊 1 個。以降 10^goldScale 倍ごとに 10 倍
   goldAt: Math.log10(Number.MAX_VALUE),
   goldScale: 100,
@@ -89,11 +99,11 @@ export const RULES = {
 const geo = (base: number, ratio: number) => (l: number) => D.from(ratio).pow(l).mul(base);
 
 export const ZERO_UPGRADES: readonly UpgradeDef[] = [
-  { id: 'zMult', name: '札束ブースト', desc: (l) => `全造幣機の生産 ×3 (いま ×${fmtPow(3, l)})`, max: Infinity, cost: geo(1, 6) },
+  { id: 'zMult', name: '札束ブースト', desc: (l) => `全造幣機の生産 ×${RULES.zMultBase} (いま ×${fmtPow(RULES.zMultBase, l)})`, max: Infinity, cost: geo(1, 6) },
   { id: 'zCount', name: 'デノミの記憶', desc: () => 'デノミ回数に応じて全造幣機を強化 (×(1+回数)^1.5)', max: 1, cost: () => D.from(1) },
-  { id: 'zZero', name: 'ゼロの信用', desc: () => '累計ゼロ数に応じて全造幣機を強化 (×(1+累計ゼロ)^0.3)', max: 1, cost: () => D.from(3) },
-  { id: 'zPer10', name: '十台揃え', desc: (l) => `10台ごとの倍率 +0.25 (いま ×${(2 + 0.25 * l).toFixed(2)})`, max: 4, cost: geo(2, 3) },
-  { id: 'zTick', name: '高速輪転', desc: (l) => `印刷速度1回ごとの倍率 +0.025 (いま ×${(1.125 + 0.025 * l).toFixed(3)})`, max: 5, cost: geo(2, 3) },
+  { id: 'zZero', name: 'ゼロの信用', desc: () => `累計ゼロ数に応じて全造幣機を強化 (×(1+累計ゼロ)^${RULES.zZeroPow})`, max: 1, cost: () => D.from(3) },
+  { id: 'zPer10', name: '十台揃え', desc: (l) => `10台ごとの倍率 +${RULES.zPer10Step} (いま ×${(RULES.per10Base + RULES.zPer10Step * l).toFixed(2)})`, max: 4, cost: geo(2, 3) },
+  { id: 'zTick', name: '高速輪転', desc: (l) => `印刷速度1回ごとの倍率 +${RULES.zTickStep} (いま ×${(RULES.tickBase + RULES.zTickStep * l).toFixed(3)})`, max: 5, cost: geo(2, 3) },
   { id: 'zQE', name: '異次元緩和', desc: () => '量的緩和1回ごとの倍率 ×2 → ×3', max: 1, cost: () => D.from(8) },
   { id: 'zStart', name: '初期資本', desc: (l) => `リセット後の開始資金を増やす (いま ${['10', '1000', '100万', '1億', '1兆'][l]}円)`, max: 4, cost: geo(4, 5) },
   { id: 'zKeepQE', name: '政策の継続', desc: () => 'デノミ後も量的緩和4回の状態から再開', max: 1, cost: () => D.from(20) },
@@ -112,7 +122,7 @@ export const GOLD_UPGRADES: readonly UpgradeDef[] = [
   { id: 'gPer10', name: '純金の輪転機', desc: (l) => `10台ごとの倍率 +0.5 (いま +${(0.5 * l).toFixed(1)})`, max: 4, cost: geo(2, 4) },
   { id: 'gTick', name: '金メッキの版', desc: (l) => `印刷速度1回ごとの倍率 +0.05 (いま +${(0.05 * l).toFixed(2)})`, max: 5, cost: geo(2, 3) },
   { id: 'gStart', name: '準備金', desc: (l) => `金本位制の後、ゼロを持って始める (いま ${['0', '1000', '100万', '10億'][l]})`, max: 3, cost: geo(3, 5) },
-  { id: 'gExp', name: 'デノミ改革', desc: (l) => `ゼロが10倍になる資産の倍率を下げる (いま 10^${20 - 2 * l} 倍ごと)`, max: 3, cost: geo(5, 8) },
+  { id: 'gExp', name: 'デノミ改革', desc: (l) => `ゼロが10倍になる資産の倍率を下げる (いま 10^${RULES.denomScale - RULES.gExpStep * l} 倍ごと)`, max: 3, cost: geo(5, 8) },
   { id: 'gInterest', name: '金利生活', desc: () => 'いまデノミで得られるゼロの1%を毎秒受け取る', max: 1, cost: () => D.from(15) },
 ];
 

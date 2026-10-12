@@ -4,11 +4,11 @@ import { GENS, RULES } from './data';
 import { lvl, type State } from './state';
 
 export function tickBase(s: State): number {
-  return RULES.tickBase + 0.025 * lvl(s, 'zTick') + 0.05 * lvl(s, 'gTick');
+  return RULES.tickBase + RULES.zTickStep * lvl(s, 'zTick') + 0.05 * lvl(s, 'gTick');
 }
 
 export function per10(s: State): number {
-  return 2 + 0.25 * lvl(s, 'zPer10') + 0.5 * lvl(s, 'gPer10');
+  return RULES.per10Base + RULES.zPer10Step * lvl(s, 'zPer10') + 0.5 * lvl(s, 'gPer10');
 }
 
 export function qeBase(s: State): number {
@@ -21,9 +21,9 @@ export function achMult(s: State): D {
 
 export function globalMult(s: State): D {
   let m = D.from(qeBase(s)).pow(s.qe);
-  m = m.mul(D.from(3).pow(lvl(s, 'zMult')));
+  m = m.mul(D.from(RULES.zMultBase).pow(lvl(s, 'zMult')));
   if (lvl(s, 'zCount')) m = m.mul(Math.pow(1 + s.denoms, 1.5));
-  if (lvl(s, 'zZero')) m = m.mul(s.zerosTotal.add(1).pow(0.3));
+  if (lvl(s, 'zZero')) m = m.mul(s.zerosTotal.add(1).pow(RULES.zZeroPow));
   m = m.mul(D.from(1000).pow(lvl(s, 'gMult')));
   m = m.mul(s.goldTotal.add(1).pow(2));
   return m.mul(achMult(s));
