@@ -13,10 +13,13 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.core.json"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.core.json",
+    "balance": "tsx scripts/balance.ts"
   },
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "22.20.5",
+    "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vite": "8.3.4",
     "vitest": "5.0.3"
